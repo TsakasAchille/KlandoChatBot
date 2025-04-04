@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Support AI</title>
+    <meta charset="utf-8" />
+    <script src="https://cdn.jsdelivr.net/npm/botui/build/botui.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui.min.css" />
+    <style>
+      html, body {
+        height: 100%;
+        margin: 0;
+        font-family: "Helvetica Neue", sans-serif;
+      }
+      #botui-app {
+        padding: 20px;
+        max-width: 600px;
+        margin: 0 auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="botui-app">
+      <bot-ui></bot-ui>
+    </div>
+
+    <script>
+      const botui = new BotUI('botui-app');
+
+      // Récupère l'UID passé en URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const uid = urlParams.get('uid');
+
+      function ask() {
+        botui.action.text({
+          action: {
+            placeholder: 'Pose ta question ici'
+          }
+        }).then(res => {
+          botui.message.add({ loading: true }).then(async (index) => {
+            const response = await fetch('https://n8n-7qil.onrender.com/webhook-test/61594c39-b20f-49fc-9701-1667f2e07fdc', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                uid: uid,
+                message: res.value
+              })
+            });
+
+            const data = await response.json();
+            botui.message.update(index, {
+              loading: false,
+              content: data.reply || "Désolé, une erreur est survenue."
+            }).then(ask);
+          });
+        });
+      }
+
+      // Démarrage
+      botui.message.add({
+        content: 'Bonjour ! Pose-moi ta question.'
+      }).then(ask);
+    </script>
+  </body>
+</html>

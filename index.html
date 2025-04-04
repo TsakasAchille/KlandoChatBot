@@ -37,7 +37,7 @@
           }
         }).then(res => {
           botui.message.add({ loading: true }).then(async (index) => {
-            const response = await fetch('https://n8n-7qil.onrender.com/webhook-test/61594c39-b20f-49fc-9701-1667f2e07fdc', {
+            const response = await fetch('https://n8n-7qil.onrender.com/webhook/61594c39-b20f-49fc-9701-1667f2e07fdc', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({

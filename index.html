@@ -3,24 +3,96 @@
   <head>
     <title>Support AI</title>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Vue.js doit être chargé avant BotUI -->
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/botui/build/botui.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
       html, body {
         height: 100%;
         margin: 0;
-        font-family: "Helvetica Neue", sans-serif;
+        font-family: 'Poppins', sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #333;
       }
       #botui-app {
-        padding: 20px;
         max-width: 600px;
         margin: 0 auto;
+        padding: 20px;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      .botui-container {
+        background-color: rgba(255, 255, 255, 0.9);
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+      .botui-messages-container {
+        padding: 16px;
+        flex: 1;
+        overflow-y: auto;
+      }
+      .botui-message {
+        margin-bottom: 15px;
+      }
+      .botui-message-content {
+        border-radius: 18px;
+        padding: 12px 18px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      .botui-message-content.human {
+        background-color: #007bff;
+        color: white;
+      }
+      .botui-message-content.bot {
+        background-color: #f0f0f0;
+        color: #333;
+      }
+      .botui-actions-container {
+        padding: 12px;
+        border-top: 1px solid #eee;
+      }
+      .botui-actions-text-input {
+        border-radius: 30px;
+        padding: 12px 18px;
+        border: 1px solid #ddd;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+        font-family: 'Poppins', sans-serif;
+      }
+      .botui-actions-text-submit {
+        border-radius: 30px;
+        padding: 10px 20px;
+        background: #007bff;
+        color: white;
+        border: none;
+        margin-left: 10px;
+        cursor: pointer;
+        font-family: 'Poppins', sans-serif;
+        font-weight: 500;
+      }
+      .header {
+        text-align: center;
+        padding: 20px 0;
+        color: white;
+      }
+      .header h1 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 600;
       }
     </style>
   </head>
   <body>
+    <div class="header">
+      <h1>Assistant IA</h1>
+    </div>
     <div id="botui-app">
       <bot-ui></bot-ui>
     </div>
@@ -39,20 +111,48 @@
           }
         }).then(res => {
           botui.message.add({ loading: true }).then(async (index) => {
-            const response = await fetch('https://n8n-7qil.onrender.com/webhook/61594c39-b20f-49fc-9701-1667f2e07fdc', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                uid: uid,
-                message: res.value
-              })
-            });
+            try {
+              const response = await fetch('https://n8n-7qil.onrender.com/webhook/61594c39-b20f-49fc-9701-1667f2e07fdc', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  uid: uid,
+                  message: res.value
+                })
+              });
 
-            const data = await response.json();
-            botui.message.update(index, {
-              loading: false,
-              content: data.reply || "Désolé, une erreur est survenue."
-            }).then(ask);
+              // Vérifie si la réponse est du JSON ou du texte
+              const contentType = response.headers.get('content-type');
+              let output;
+              
+              if (contentType && contentType.includes('application/json')) {
+                // Traitement JSON normal
+                const data = await response.json();
+                console.log("Réponse JSON du webhook :", data);
+                output = Array.isArray(data) ? data[0]?.output : data.output;
+              } else {
+                // Traitement du texte brut
+                const text = await response.text();
+                console.log("Réponse texte du webhook :", text);
+                output = text;
+              }
+
+              botui.message.update(index, {
+                loading: false,
+                content: output || "Désolé, une erreur est survenue."
+              }).then(ask);
+
+            } catch (e) {
+              console.error("Erreur détaillée:", e);
+              const errorMessage = e.toString().includes("CORS") ? 
+                "Erreur CORS: Le serveur n'autorise pas les requêtes depuis cette origine." :
+                `Erreur de connexion: ${e.message || e}`;
+              
+              botui.message.update(index, {
+                loading: false,
+                content: errorMessage
+              }).then(ask);
+            }
           });
         });
       }
